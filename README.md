@@ -15,6 +15,17 @@ This is a personal data exploration project, not a medical tool. It cannot diagn
 5. Plots Garmin sleep stages behind the signals.
 6. Marks a **signal match** when SpO₂ and respiration fall and heart rate rises near a Garmin awake-stage entry.
 7. Saves the HTML and PDF in `reports/`. If Telegram credentials are set, it also sends the PDF and a short summary.
+8. Adds the latest fresh Body Battery and Training Readiness readings to the Telegram summary. Low readings prompt a gentle rest/easy-session reminder.
+
+## Daily recovery reminder
+
+After the watch syncs, the pipeline reads Body Battery samples for the current local date and the latest Training Readiness snapshot. It reports Body Battery only when the sample is no more than `BODY_BATTERY_MAX_AGE_MINUTES` old (default: 120 minutes). If no fresh sample is available, it reports that instead of reusing stale data.
+
+The reminder is triggered at Body Battery 25 or below, or Training Readiness below 50 / a Garmin level of `LOW` or `POOR`. The thresholds are practical project rules, not clinical guidance. The reminder suggests considering rest or an easy session; it does not decide whether training is medically safe. The Training Readiness endpoint is exposed by the community `garminconnect` package and may change without notice. If recovery endpoints fail, the overnight sleep report still proceeds.
+
+## Garmin Connect cards and notifications
+
+Garmin Connect has separate push-notification preferences (`More > Settings > Notifications > Push Notifications`), so check whether an `Insights` option is available and enabled before assuming a card cannot generate a push. Garmin describes classic Insights as an in-app section whose statistics refresh daily. Garmin's Connect+ Active Intelligence insights are explicitly app-only. The project solves a related workflow gap by sending its own scheduled Telegram summary; it does not change Garmin Connect notification settings or reproduce Garmin's full coaching cards.
 
 ## How to interpret a “signal match”
 
@@ -58,6 +69,7 @@ GARMIN_PASSWORD=your-new-password
 TG_BOT_TOKEN=your-new-bot-token
 TG_CHAT_ID=your-chat-id
 GARMIN_TIMEZONE=Europe/Berlin
+BODY_BATTERY_MAX_AGE_MINUTES=120
 ```
 
 Telegram variables are needed only if you want delivery. Keep them blank or omit them if you only want local reports. Do not paste secrets into source code, screenshots, issue trackers, or public chat. If a credential was exposed, rotate it before using this project again.
@@ -69,6 +81,8 @@ python pipeline.py
 ```
 
 The script selects the latest overnight session using `GARMIN_TIMEZONE` and `NIGHT_START_HOUR` (default `18`). Reports go to `reports/`. Leave the Telegram variables out of `.env` to keep the run local; add them if you want the PDF and summary sent to your chat.
+
+To receive the recovery reminder each morning, run the pipeline after the watch has synchronized. On Windows, create a daily Task Scheduler task with **Program** set to `<project>\venv\Scripts\python.exe`, **Arguments** set to `<project>\pipeline.py`, and **Start in** set to the project folder. If you move the folder, update all three paths in the task.
 
 Optional event-window settings:
 
@@ -119,6 +133,7 @@ The implementation used AI-assisted coding. The project owner's work was to defi
 ## Limitations and privacy
 
 - Garmin Connect response formats can change, and this project uses a community library rather than an official Garmin API contract.
+- Garmin's insight cards and notification behavior depend on the feature type and user settings; this pipeline does not forward Garmin's original card text.
 - Missing samples are not interpolated into evidence of a physiological event.
 - Sensor readings are estimates and have varying sampling intervals and confidence.
 - Event counts depend on user-selected windows and thresholds.
@@ -130,3 +145,5 @@ The implementation used AI-assisted coding. The project owner's work was to defi
 The project uses the community-maintained `python-garminconnect` library and open-source plotting and data tools. It is not affiliated with Garmin.
 
 Clinical boundary reference: the [American Academy of Sleep Medicine diagnostic testing guideline](https://aasm.org/resources/clinicalguidelines/diagnostic-testing-osa.pdf) recommends polysomnography or technically adequate home sleep apnea testing for diagnosis; consumer wearable pattern matching is not a diagnostic substitute. The AASM's [respiratory scoring criteria](https://isr.aasm.org/helpv6/ScoringRespiratoryEventsR.html) include airflow-signal requirements that this project does not measure.
+
+Garmin references: [Insights in Garmin Connect](https://support.garmin.com/en-US/?faq=c3DcuWOsuW0BiEjv94eIm5), [customizing push notifications](https://support.garmin.com/en-IE/?faq=JIk40ZUqX26kyblDLHgbD8), and [Active Intelligence availability](https://support.garmin.com/en-MY/?faq=kWi5DoaMPZ4VCJBA0lFWP7).

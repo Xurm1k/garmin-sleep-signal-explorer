@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import html
 import math
 import os
 import sys
@@ -474,7 +475,7 @@ def build_dashboard(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
                       line={"color": "#ff365c", "width": 2, "dash": "dash"},
                       layer="above")
         fig.add_annotation(x=wake, y=1, xref="x", yref="paper",
-                           text=f"#{number} WAKE", showarrow=False,
+                           text=f"#{number} ПРОБУЖДЕНИЕ", showarrow=False,
                            yshift=15, bgcolor="#ff365c", bordercolor="#ffffff",
                            borderwidth=1, borderpad=4,
                            font={"color": "#ffffff", "size": 10})
@@ -485,21 +486,21 @@ def build_dashboard(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
                       row=1, col=1, secondary_y=True)
     if not respiration.empty:
         fig.add_trace(go.Scatter(x=respiration.timestamp, y=respiration.respiration,
-                                 name="Respiration", mode="lines",
+                                 name="Дыхание", mode="lines",
                                  line={"color": "#39c6ff", "width": 2.3},
-                                 hovertemplate="Respiration: %{y:.1f} breaths/min<extra></extra>"),
+                                 hovertemplate="Дыхание: %{y:.1f} вдох/мин<extra></extra>"),
                       row=1, col=1, secondary_y=False)
     if not heart_rate.empty:
         fig.add_trace(go.Scatter(x=heart_rate.timestamp, y=heart_rate.heart_rate,
-                                 name="Heart rate", mode="lines",
+                                 name="Пульс", mode="lines",
                                  line={"color": "#ffad33", "width": 2.2},
-                                 hovertemplate="Heart rate: %{y:.0f} bpm<extra></extra>", yaxis="y3"))
+                                 hovertemplate="Пульс: %{y:.0f} уд/мин<extra></extra>", yaxis="y3"))
     # Bright, numbered markers make each three-signal match visible on all
     # three curves. Hover shows the local baseline and size of each change.
     marker_specs = [
         ("spo2", "timestamp", "spo2_drop", "spo2_baseline", "y2", "#ff3158", "%"),
-        ("respiration", "respiration_timestamp", "respiration_drop", "respiration_baseline", "y", "#00e5ff", " breaths/min"),
-        ("heart_rate", "heart_rate_timestamp", "heart_rate_rise", "heart_rate_baseline", "y3", "#ffd60a", " bpm"),
+        ("respiration", "respiration_timestamp", "respiration_drop", "respiration_baseline", "y", "#00e5ff", " вдох/мин"),
+        ("heart_rate", "heart_rate_timestamp", "heart_rate_rise", "heart_rate_baseline", "y3", "#ffd60a", " уд/мин"),
     ]
     for index, (column, time_key, delta_key, baseline_key, axis, color, unit) in enumerate(marker_specs):
         if not events:
@@ -513,21 +514,21 @@ def build_dashboard(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
             textfont={"color": color, "size": 12, "family": "Arial Black"},
             marker={"symbol": "circle", "size": 16, "color": color,
                     "line": {"color": "#ffffff", "width": 2}},
-            name=f"Marker {column}", showlegend=False, yaxis=axis,
+            name=f"Метка {column}", showlegend=False, yaxis=axis,
             customdata=[[i, event["awake_start"].strftime("%H:%M"),
                          event[baseline_key], event[delta_key]]
                         for i, event in enumerate(events, start=1)],
-            hovertemplate=(f"Candidate match #%{{customdata[0]}}<br>Wake: "
-                           f"%{{customdata[1]}}<br>Value: %{{y:.1f}}{unit}<br>"
-                           f"Local baseline: %{{customdata[2]:.1f}}{unit}<br>"
-                           f"Change: %{{customdata[3]:.1f}}{unit}<extra></extra>")))
+            hovertemplate=(f"Совпадение #%{{customdata[0]}}<br>Пробуждение: "
+                           f"%{{customdata[1]}}<br>Значение: %{{y:.1f}}{unit}<br>"
+                           f"Локальный уровень: %{{customdata[2]:.1f}}{unit}<br>"
+                           f"Отклонение: %{{customdata[3]:.1f}}{unit}<extra></extra>")))
     if events:
         fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers",
-                                 name=f"Three-signal matches · {len(events)}",
+                                 name=f"Совпадение 3 сигналов · {len(events)}",
                                  marker={"symbol": "circle", "size": 12, "color": "#ff365c",
                                          "line": {"color": "#ffffff", "width": 2}}),
                       row=1, col=1, secondary_y=True)
-    stage_labels = {"awake": "Awake", "deep": "Deep", "light": "Light", "rem": "REM"}
+    stage_labels = {"awake": "Бодрствование", "deep": "Глубокий", "light": "Лёгкий", "rem": "REM"}
     for stage_name, color in STAGE_COLORS.items():
         fig.add_trace(go.Scatter(x=[None], y=[None], mode="markers", name=stage_labels[stage_name],
                                  marker={"symbol": "square", "size": 10, "color": color}),
@@ -556,23 +557,23 @@ def build_dashboard(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
         x_start = min(timestamps) if timestamps else None
         x_end = max(ends) if ends else None
     fig.update_layout(template="plotly_dark", height=760, hovermode="x unified",
-                      title={"text": f"SLEEP · {target_date}<br><sup>{len(spo2):,} SpO₂ samples · "
-                                      f"{len(events)} three-signal matches</sup>",
+                      title={"text": f"СОН · {target_date}<br><sup>{len(spo2):,} SpO₂ точек · "
+                                      f"{len(events)} трёхсигнальных совпадений</sup>",
                              "x": 0.04, "xanchor": "left", "font": {"size": 22}},
                       legend={"orientation": "h", "y": 1.10, "x": 0.02,
                               "bgcolor": "rgba(14, 20, 32, 0.82)", "bordercolor": "#34445a",
                               "borderwidth": 1, "font": {"size": 11}},
                       margin={"t": 135, "b": 105, "l": 90, "r": 150},
-                      xaxis={"title": "Time", "domain": [0.08, 0.83]},
+                      xaxis={"title": "Время", "domain": [0.08, 0.83]},
                       yaxis3={"overlaying": "y", "side": "right",
                               "anchor": "free", "position": 0.99, "range": heart_rate_range,
                               "showgrid": False, "tickfont": {"color": "#ffad33"},
-                              "title": {"text": "Heart rate, bpm", "font": {"color": "#ffad33"}}})
+                              "title": {"text": "Пульс, уд/мин", "font": {"color": "#ffad33"}}})
     fig.update_layout(yaxis2={"anchor": "free", "position": 0.90,
                               "tickfont": {"color": "#f4f4f4"}})
     if x_start is not None and x_end is not None and x_end > x_start:
         fig.update_xaxes(range=[x_start, x_end])
-    fig.update_yaxes(title_text="Respiration (breaths/min)", range=respiration_range, secondary_y=False)
+    fig.update_yaxes(title_text="Дыхание, вдохов/мин", range=respiration_range, secondary_y=False)
     fig.update_yaxes(title_text="SpO₂, %", range=spo2_range, secondary_y=True)
     fig.update_xaxes(showgrid=True, gridcolor="rgba(190, 205, 225, 0.12)",
                      linecolor="#516176", tickfont={"color": "#c4d0df"},
@@ -584,7 +585,7 @@ def build_dashboard(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
                       hoverlabel={"bgcolor": "#121d2d", "bordercolor": "#8092aa",
                                   "font": {"color": "#ffffff", "size": 12}},
                       uirevision=f"sleep-{target_date}")
-    fig.add_annotation(text="Sleep stages are shaded; the highlighted window and dashed line mark a candidate match near wake",
+    fig.add_annotation(text="Цветные блоки — фазы сна · розовая зона и вертикальный пунктир — окно совпадения у пробуждения",
                        xref="paper", yref="paper", x=0, y=-0.19, showarrow=False,
                        align="left", font={"size": 11, "color": "#aebbd0"})
     path = REPORTS_DIR / f"sleep_report_{target_date}.html"
@@ -595,18 +596,144 @@ def build_dashboard(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
 
 def summary_text(target_date: str, sleep: dict, spo2: pd.DataFrame,
                  respiration: pd.DataFrame, heart_rate: pd.DataFrame,
-                 events: list[dict]) -> str:
+                 events: list[dict], daily_status: dict | None = None) -> str:
     def mean_text(frame: pd.DataFrame, column: str) -> str:
         return "—" if frame.empty else f"{frame[column].mean():.1f}"
 
     total_minutes = int(sleep["sleep_time_seconds"] // 60)
     hours, minutes = divmod(total_minutes, 60)
-    return (f"🌙 Garmin overnight {target_date}\n\n"
-            f"<b>✔️ Signal matches: {len(events)}</b>\n"
+    text = (f"🌙 Garmin — ночь / night {target_date}\n\n"
+            f"<b>✔️ Match (probably Apnoe): {len(events)}</b>\n"
             f"Total sleep: {hours}h {minutes:02d}min\n"
             f"SpO₂, avg.: {mean_text(spo2, 'spo2')}%\n"
             f"Respiration avg.: {mean_text(respiration, 'respiration')} breaths/min\n"
             f"HR avg.: {mean_text(heart_rate, 'heart_rate')} bpm")
+    if daily_status:
+        text += "\n\n<b>Daily recovery check</b>"
+        battery = daily_status.get("body_battery")
+        readiness = daily_status.get("training_readiness")
+        if battery is None:
+            text += "\nBody Battery: no current reading"
+        else:
+            text += f"\nBody Battery: {battery}/100"
+        if readiness:
+            score = readiness.get("score")
+            level = readiness.get("level")
+            if score is not None:
+                label = f"{score}/100" + (f" · {level}" if level else "")
+                text += f"\nTraining Readiness: {label}"
+            elif level:
+                text += f"\nTraining Readiness: {level}"
+            feedback = readiness.get("feedback")
+            if feedback:
+                text += f"\nGarmin: {html.escape(feedback)}"
+        else:
+            text += "\nTraining Readiness: no current reading"
+        if daily_status.get("low_recovery"):
+            text += ("\n<b>Low recovery reserve:</b> consider rest or an easy session "
+                     "today. This is a training-load prompt, not medical advice.")
+    return text
+
+
+def _as_object_list(raw: Any, label: str) -> list[dict]:
+    """Accept the documented single-object/list response forms only."""
+    if isinstance(raw, dict):
+        return [raw]
+    if isinstance(raw, list) and all(isinstance(item, dict) for item in raw):
+        return raw
+    if raw in (None, []):
+        return []
+    raise PipelineError(f"Unsupported {label} response shape: {type(raw).__name__}")
+
+
+def fetch_daily_recovery(garmin: Garmin, current_date: str, now: datetime) -> dict:
+    """Read Body Battery samples and Training Readiness snapshots explicitly.
+
+    Garmin's Body Battery endpoint documents [epoch-milliseconds, level]
+    pairs in bodyBatteryValuesArray. No other arrays are searched. The latest
+    valid sample at or before `now` is used. Both endpoints are optional for
+    pipeline continuity: endpoint/shape failures are logged and reported as
+    unavailable rather than blocking the sleep report.
+    """
+    result: dict[str, Any] = {"body_battery": None, "training_readiness": None,
+                              "low_recovery": False}
+    max_age_minutes = int(os.getenv("BODY_BATTERY_MAX_AGE_MINUTES", "120"))
+    if max_age_minutes < 1:
+        raise PipelineError("BODY_BATTERY_MAX_AGE_MINUTES must be at least 1")
+    body_fn = getattr(garmin, "get_body_battery", None)
+    if callable(body_fn):
+        try:
+            entries = _as_object_list(call_retry(
+                "get_body_battery", lambda: body_fn(current_date, current_date), attempts=2),
+                "Body Battery")
+            samples: list[tuple[pd.Timestamp, int]] = []
+            for entry in entries:
+                values = entry.get("bodyBatteryValuesArray")
+                if values is None:
+                    continue
+                if not isinstance(values, list):
+                    raise PipelineError("Unsupported bodyBatteryValuesArray shape")
+                for pair in values:
+                    if not isinstance(pair, list) or len(pair) != 2:
+                        LOGGER.warning("Skipping malformed Body Battery sample")
+                        continue
+                    try:
+                        ts = pd.to_datetime(pair[0], unit="ms", utc=True, errors="coerce")
+                        level = float(pair[1])
+                    except (TypeError, ValueError, OverflowError):
+                        continue
+                    if pd.isna(ts) or not math.isfinite(level) or not 0 <= level <= 100:
+                        continue
+                    now_utc = pd.Timestamp(now.astimezone(ZoneInfo("UTC")))
+                    age_minutes = (now_utc - ts).total_seconds() / 60
+                    if 0 <= age_minutes <= max_age_minutes:
+                        samples.append((ts, int(round(level))))
+                    elif age_minutes > max_age_minutes:
+                        LOGGER.debug("Ignoring stale Body Battery sample (%.0f min old)", age_minutes)
+            if samples:
+                result["body_battery"] = max(samples, key=lambda item: item[0])[1]
+            else:
+                LOGGER.info("No valid Body Battery samples for %s", current_date)
+        except Exception as exc:
+            LOGGER.warning("Body Battery unavailable: %s", exc)
+    else:
+        LOGGER.info("Installed garminconnect has no get_body_battery method")
+
+    readiness_fn = getattr(garmin, "get_training_readiness", None)
+    if callable(readiness_fn):
+        try:
+            snapshots = _as_object_list(call_retry(
+                "get_training_readiness", lambda: readiness_fn(current_date), attempts=2),
+                "Training Readiness")
+            valid = []
+            for item in snapshots:
+                score = item.get("score")
+                if isinstance(score, bool) or not isinstance(score, (int, float)):
+                    score = None
+                elif not 0 <= score <= 100:
+                    score = None
+                timestamp = item.get("timestampLocal") or item.get("timestamp") or ""
+                valid.append({"score": int(score) if score is not None else None,
+                              "level": item.get("level") if isinstance(item.get("level"), str) else None,
+                              "feedback": item.get("feedbackShort") if isinstance(item.get("feedbackShort"), str) else None,
+                              "timestamp": str(timestamp)})
+            if valid:
+                result["training_readiness"] = max(valid, key=lambda item: item["timestamp"])
+        except Exception as exc:
+            LOGGER.warning("Training Readiness unavailable: %s", exc)
+    else:
+        LOGGER.info("Installed garminconnect has no get_training_readiness method")
+
+    battery = result["body_battery"]
+    readiness = result["training_readiness"]
+    level = (readiness or {}).get("level", "").strip().upper()
+    score = (readiness or {}).get("score")
+    low_readiness = level in {"LOW", "POOR", "VERY_LOW", "VERY LOW"} or (score is not None and score < 50)
+    # Garmin's own Body Battery scale describes 5–25 as very low reserve.
+    result["low_recovery"] = (battery is not None and battery <= 25) or low_readiness
+    LOGGER.info("Daily recovery values: Body Battery=%s, Training Readiness=%s",
+                battery, readiness)
+    return result
 
 
 def telegram_request(url: str, *, data: dict, files: dict | None = None) -> None:
@@ -635,7 +762,7 @@ def send_telegram(path: Path, text: str) -> None:
     with path.open("rb") as document:
         telegram_request(base + "/sendDocument",
                          data={"chat_id": chat_id,
-                               "caption": "English sleep report"},
+                               "caption": "Двуязычный PDF-отчёт сна / Bilingual sleep report"},
                          files={"document": (path.name, document, "application/pdf")})
     LOGGER.info("Report sent to Telegram")
 
@@ -647,6 +774,7 @@ def main() -> int:
         if not 0 <= night_start <= 23:
             raise PipelineError("NIGHT_START_HOUR must be from 0 to 23")
         target = last_night(datetime.now(tz), night_start).isoformat()
+        current_date = datetime.now(tz).date().isoformat()
         LOGGER.info("Collecting overnight data for Garmin date %s (%s)", target, tz.key)
         garmin = init_garmin()
         raw_sleep, raw_spo2, raw_respiration = fetch_data(garmin, target)
@@ -676,10 +804,11 @@ def main() -> int:
         pdf_report.render_pdf(sleep, spo2, respiration, heart_rate, events,
                               target, tz.key, pdf_path)
         LOGGER.info("Saved bilingual PDF report: %s", pdf_path)
-        if os.getenv("TG_BOT_TOKEN") and os.getenv("TG_CHAT_ID"):
-            send_telegram(pdf_path, summary_text(target, sleep, spo2, respiration, heart_rate, events))
-        else:
-            LOGGER.info("Telegram is not configured; reports remain local")
+        # Recovery metrics describe the current day, while sleep metrics are
+        # keyed by the Garmin date of the overnight session.
+        daily_status = fetch_daily_recovery(garmin, current_date, datetime.now(tz))
+        send_telegram(pdf_path, summary_text(target, sleep, spo2, respiration,
+                                             heart_rate, events, daily_status))
         return 0
     except Exception as exc:
         if not logging.getLogger().handlers:

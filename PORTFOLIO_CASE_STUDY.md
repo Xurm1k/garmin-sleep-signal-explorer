@@ -14,6 +14,7 @@ I used AI-assisted coding to turn that question into a Python pipeline. My contr
 - Aligns SpO₂, respiration, heart rate, and sleep-stage intervals on the overnight timeline.
 - Marks windows where all three signals change near a Garmin awake-stage entry.
 - Writes an interactive HTML dashboard and a PDF; Telegram delivery is optional.
+- Adds a daily recovery snapshot using current Body Battery and Training Readiness, with a configurable freshness check for Body Battery and a cautious low-reserve prompt.
 
 ## A decision I had to make
 
@@ -28,6 +29,7 @@ That makes the output easier to review against the chart. It does not make the r
 - Compared generated visualizations with Garmin's own overnight charts and asked for visible sleep stages and clearer event markers.
 - Asked whether the custom ODI3-like counter was meaningful and how to describe it without presenting it as a clinical score.
 - Focused the public explanation on the main question: which signals changed near an awakening label, and what that result cannot establish.
+- Identified a usability gap in my routine: sleep and recovery context was scattered across Garmin Connect screens, so I wanted a single Telegram summary after the watch synced. I set requirements for Body Battery freshness and a restrained recovery reminder.
 
 I used AI as a coding tool. My contribution was the problem framing, requirements, visual review, and interpretation of the results. That is the role I would describe in a portfolio and in an interview.
 
