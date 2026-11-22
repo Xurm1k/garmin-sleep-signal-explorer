@@ -1,8 +1,8 @@
 # Garmin Sleep Signal Explorer
 
-A Python project that collects overnight Garmin Connect data, validates selected signals, highlights exploratory changes near Garmin-labeled awakenings, and produces local HTML and bilingual PDF reports. Optional Telegram delivery, a local health journal, and weekly Gemini summaries support daily use.
+A Python workflow for making Garmin sleep and recovery context easier to notice and review. It validates overnight signals, produces local HTML/PDF reports, and can send daily recovery summaries through Telegram. A local journal and optional weekly Gemini review help preserve context over time.
 
-A detected “match” is a rule-based window for review, not an apnea event, diagnosis, risk estimate, or proof of cause.
+I built it around a practical gap: relevant recovery information can be easy to miss when it is spread across screens and reports. The project surfaces selected metrics and its own rule-based reminders; it does not forward or replace Garmin's recommendations. A detected “match” is an exploratory window for review, not an event, diagnosis, risk estimate, or proof of cause.
 
 ## Features
 
@@ -101,3 +101,8 @@ Telegram notes/photos are sent through Telegram. If Gemini is enabled, selected 
 Garmin response formats may change; this project uses a community library, not a stable official API contract. Wearable readings and sleep stages are estimates, may contain gaps, and do not include the airflow measurements used in clinical respiratory-event scoring. The thresholds and event windows are exploratory and have not been clinically validated. Discuss persistent symptoms with a qualified clinician.
 
 Not affiliated with Garmin. Optional AI summaries can be wrong and are not professional medical advice.
+
+
+## Portfolio case study
+
+[Read the case study](./PORTFOLIO_CASE_STUDY.md) for the problem framing, data-quality controls, workflow automation, privacy decisions, and my contribution as an Operations and Quality professional using AI-assisted coding.
