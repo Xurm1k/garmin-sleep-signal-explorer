@@ -1,149 +1,103 @@
 # Garmin Sleep Signal Explorer
 
-Garmin Sleep Signal Explorer looks at one specific question: do changes in SpO₂, respiration rate, and heart rate show up near a Garmin-labeled awakening? The Python pipeline reads an overnight session, checks selected fields, aligns the signals with sleep stages, and creates a PDF and interactive HTML report. Telegram delivery is optional.
+A Python project that collects overnight Garmin Connect data, validates selected signals, highlights exploratory changes near Garmin-labeled awakenings, and produces local HTML and bilingual PDF reports. Optional Telegram delivery, a local health journal, and weekly Gemini summaries support daily use.
 
-For the decisions behind the project and an honest description of my role, see [PORTFOLIO_CASE_STUDY.md](PORTFOLIO_CASE_STUDY.md).
+A detected “match” is a rule-based window for review, not an apnea event, diagnosis, risk estimate, or proof of cause.
 
-This is a personal data exploration project, not a medical tool. It cannot diagnose a sleep disorder or estimate health risk.
+## Features
 
-## What it does
+- Explicit extraction from known Garmin response structures; unsupported shapes are logged instead of guessed.
+- Input validation for SpO₂, respiration, and heart-rate data before analysis.
+- Sleep stages behind signal traces on one overnight timeline.
+- Local-baseline comparisons around Garmin awake-stage labels.
+- Local PDF/HTML reports and optional Telegram delivery.
+- SQLite storage for nightly summaries, journal notes, and manual measurements.
+- Optional Gemini chat and weekly review. When enabled, selected local context is sent to Google's API.
+- Telegram text/photo intake with an acknowledgement after local storage.
 
-1. Reads Garmin credentials from `.env`; Telegram credentials are needed only for delivery.
-2. Fetches the latest overnight session in the configured time zone.
-3. Reads known Garmin fields. If a response has an unfamiliar shape, the pipeline logs it instead of guessing.
-4. Rejects values outside the configured ranges before analysis: SpO₂ 70–100%, respiration 6–30 breaths/min, and heart rate 30–220 bpm.
-5. Plots Garmin sleep stages behind the signals.
-6. Marks a **signal match** when SpO₂ and respiration fall and heart rate rises near a Garmin awake-stage entry.
-7. Saves the HTML and PDF in `reports/`. If Telegram credentials are set, it also sends the PDF and a short summary.
-8. Adds the latest fresh Body Battery and Training Readiness readings to the Telegram summary. Low readings prompt a gentle rest/easy-session reminder.
+## Choose a deployment
 
-## Daily recovery reminder
+| Option | Advantage | Requirement |
+|---|---|---|
+| **A. Linux server** | Runs while your PC is off | Cloud VM, outbound connectivity, and provider capacity |
+| **B. Windows PC as server** | Keeps the data on your computer | PC must be on, awake, connected, and able to reach the services |
 
-After the watch syncs, the pipeline reads Body Battery samples for the current local date and the latest Training Readiness snapshot. It reports Body Battery only when the sample is no more than `BODY_BATTERY_MAX_AGE_MINUTES` old (default: 120 minutes). If no fresh sample is available, it reports that instead of reusing stale data.
+Both use this same project. Personal data and credentials stay in local `.env`, `data/`, and `reports/` files; none belong in GitHub.
 
-The reminder is triggered at Body Battery 25 or below, or Training Readiness below 50 / a Garmin level of `LOW` or `POOR`. The thresholds are practical project rules, not clinical guidance. The reminder suggests considering rest or an easy session; it does not decide whether training is medically safe. The Training Readiness endpoint is exposed by the community `garminconnect` package and may change without notice. If recovery endpoints fail, the overnight sleep report still proceeds.
+## A. Linux server with systemd
 
-## Garmin Connect cards and notifications
+Example systemd units are in `cloud/`. They assume `/opt/garmin-sleep` and a dedicated `garminbot` service account. Adjust these values if your installation differs.
 
-Garmin Connect has separate push-notification preferences (`More > Settings > Notifications > Push Notifications`), so check whether an `Insights` option is available and enabled before assuming a card cannot generate a push. Garmin describes classic Insights as an in-app section whose statistics refresh daily. Garmin's Connect+ Active Intelligence insights are explicitly app-only. The project solves a related workflow gap by sending its own scheduled Telegram summary; it does not change Garmin Connect notification settings or reproduce Garmin's full coaching cards.
+1. Create and secure a Linux VM; confirm outbound internet access.
+2. Copy the project source to the VM. Do not copy a personal archive or a public report.
+3. Create a virtual environment and install dependencies:
+   ```bash
+   python3 -m venv .venv
+   . .venv/bin/activate
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+4. Create a private `.env` and local `data/` directory. Restrict permissions to the service account.
+5. Review and copy the unit files from `cloud/` to `/etc/systemd/system/`; adjust paths and account names as needed.
+6. Enable the Telegram listener and the daily timer, then inspect their status and logs.
+7. Add `GEMINI_API_KEY` to the private `.env` only if you want Gemini replies and the Sunday review.
 
-## How to interpret a “signal match”
+The timer is scheduled for 08:30 local server time, with up to five minutes of randomized delay and catch-up after downtime. Confirm the server timezone and next scheduled time. Cloud free-tier availability, capacity, and pricing can change; check the provider's current terms.
 
-I wanted to check whether changes in three signals appeared close to the awake intervals in Garmin's chart. For each awake-stage entry, the rule compares the signals with their own median values from 20 to 10 minutes beforehand. It then looks from 10 minutes before through 5 minutes after the entry. A change must clear a small minimum and 1.5 times the baseline's median absolute deviation.
+## B. Windows PC as a small server
 
-I chose these windows and thresholds for this exploration; they have not been clinically validated. Garmin sleep stages are estimates, and the samples can miss short events. A match only says the rule found the three changes in its search window. It does not identify why they happened. The data available to this project also lack the airflow signal used in clinical respiratory-event scoring.
+1. Install Python 3.10 or newer. Create a virtual environment and install `requirements.txt`.
+2. Copy `.env.example` to `.env` and enter your own credentials locally.
+3. In Windows Task Scheduler, create a daily task for `pipeline.py` after the watch has synced. Set **Program** to the virtual environment's `python.exe`, **Arguments** to the full path of `pipeline.py`, and **Start in** to the project folder.
+4. Create a separate startup/sign-in task for `telegram_intake.py`. The included hidden launcher is an example; review its paths before use and configure restart after failure.
+5. Enable **Run task as soon as possible after a scheduled start is missed** if desired. Prevent sleep during the run: shutdown, hibernation, lost internet, or a moved folder interrupts the schedule.
 
-The local experimental `pipeline1.py` is not part of this public copy. Its custom “ODI3-like” counter used project-selected rules, so it should not be described as a clinical ODI3, hypopnea estimate, or risk score.
-
-## Project structure
-
-```text
-garmin-sleep-signals/
-├── pipeline.py       # Garmin collection, parsing, event logic, Plotly, Telegram
-├── pdf_report.py     # Static PDF report renderer
-├── requirements.txt
-├── .env.example      # Variable names only; no credentials
-├── .gitignore
-├── README.md
-└── PORTFOLIO_CASE_STUDY.md
-```
+The supplied Windows launchers are examples and may need path adjustments.
 
 ## Setup
 
-Requirements: Python 3.10 or newer, a Garmin Connect account, and (optionally) a Telegram bot and chat ID.
-
-```bash
+```powershell
 python -m venv .venv
-# Windows PowerShell
 .\.venv\Scripts\Activate.ps1
-# macOS/Linux: source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-Copy `.env.example` to `.env` and fill it in on your computer. Never commit `.env`.
+Example `.env` keys (use your own values):
 
 ```env
-GARMIN_EMAIL=your-email@example.com
-GARMIN_PASSWORD=your-new-password
-TG_BOT_TOKEN=your-new-bot-token
-TG_CHAT_ID=your-chat-id
-GARMIN_TIMEZONE=Europe/Berlin
-BODY_BATTERY_MAX_AGE_MINUTES=120
+GARMIN_EMAIL=your-garmin-email
+GARMIN_PASSWORD=your-garmin-password
+TG_BOT_TOKEN=your-telegram-bot-token
+TG_CHAT_ID=your-telegram-chat-id
+GARMIN_TIMEZONE=Etc/UTC
+GEMINI_API_KEY=optional-gemini-key
 ```
 
-Telegram variables are needed only if you want delivery. Keep them blank or omit them if you only want local reports. Do not paste secrets into source code, screenshots, issue trackers, or public chat. If a credential was exposed, rotate it before using this project again.
+Telegram and Gemini are optional. Review the code and external data flows before enabling either service.
 
-## Run
+## Project files
 
-```bash
-python pipeline.py
+```text
+pipeline.py                 Garmin collection, validation, analysis, and delivery
+pdf_report.py               Bilingual PDF rendering
+health_store.py             Local SQLite journal and weekly summaries
+telegram_intake.py          Telegram long-poll listener
+gemini_health_review.py     Optional Gemini chat and weekly review
+cloud/                      Example systemd services and timer
+tests/                      Focused tests
+.env.example                Placeholder configuration
 ```
 
-The script selects the latest overnight session using `GARMIN_TIMEZONE` and `NIGHT_START_HOUR` (default `18`). Reports go to `reports/`. Leave the Telegram variables out of `.env` to keep the run local; add them if you want the PDF and summary sent to your chat.
+## Privacy
 
-To receive the recovery reminder each morning, run the pipeline after the watch has synchronized. On Windows, create a daily Task Scheduler task with **Program** set to `<project>\venv\Scripts\python.exe`, **Arguments** set to `<project>\pipeline.py`, and **Start in** set to the project folder. If you move the folder, update all three paths in the task.
+Never commit `.env`, credentials, `data/`, `reports/`, logs, screenshots, archives, SSH keys, or virtual environments. `.gitignore` excludes common local files; inspect the staged file list before each commit. If a secret was pushed, rotate it—deleting a file does not remove it from Git history.
 
-Optional event-window settings:
+Telegram notes/photos are sent through Telegram. If Gemini is enabled, selected context is sent to Google's API. Use the integrations only if their data handling fits your needs.
 
-```env
-DIP_BASELINE_MINUTES=10
-DIP_LEAD_MINUTES=10
-DIP_FOLLOW_MINUTES=5
-WAKE_WINDOW_MINUTES=10
-NIGHT_START_HOUR=18
-```
+## Limitations
 
-The source defaults define the baseline, lead, and follow windows in relation to an awake-stage entry. Review `detect_events()` before changing them; a changed rule changes the meaning of the reported count.
+Garmin response formats may change; this project uses a community library, not a stable official API contract. Wearable readings and sleep stages are estimates, may contain gaps, and do not include the airflow measurements used in clinical respiratory-event scoring. The thresholds and event windows are exploratory and have not been clinically validated. Discuss persistent symptoms with a qualified clinician.
 
-## Publish this project on GitHub
-
-1. Use the cleaned folder from this archive. Do not upload the Garmin project folder from your computer as-is.
-2. Keep `.env`, `reports/`, logs, cached Garmin responses, screenshots, virtual environments, and exports off GitHub. `.gitignore` excludes the common local files.
-3. Before committing, inspect the staged file list and search for credentials, chat IDs, dates, and personal health data. Do not use a real night's report as a public example.
-4. Create an empty repository on GitHub, then run the commands below from the project folder. Review every staged file before committing.
-5. Choose a license only after checking what you want others to be allowed to do with the project and the licenses of its dependencies.
-
-Repository description:
-
-> An exploratory Garmin sleep-data pipeline for signal validation, overnight visualization, and transparent event-window analysis.
-
-Topics: `python`, `data-visualization`, `garmin-connect`, `plotly`, `matplotlib`, `sleep-data`.
-
-In PowerShell, from the project folder:
-
-```powershell
-git init -b main
-git add --all
-git status --short
-git diff --cached --check
-git diff --cached --name-only
-# Review the staged files before committing.
-git commit -m "Prepare Garmin sleep signal analysis portfolio project"
-git remote add origin https://github.com/YOUR-USERNAME/garmin-sleep-signal-explorer.git
-git push -u origin main
-```
-
-Replace `YOUR-USERNAME` with your GitHub username. If Git reports that `origin` already exists, check it with `git remote -v` before changing anything. If a secret ever reaches GitHub, revoke or rotate it; deleting the file alone does not remove it from history.
-
-## Portfolio framing
-
-The implementation used AI-assisted coding. The project owner's work was to define the question, set requirements for the Garmin fields and value checks, compare the generated reports with Garmin's own charts, steer revisions when parsing failed, and limit the claims to what the data support. In a portfolio or interview, describe those decisions and distinguish project direction from code authorship.
-
-## Limitations and privacy
-
-- Garmin Connect response formats can change, and this project uses a community library rather than an official Garmin API contract.
-- Garmin's insight cards and notification behavior depend on the feature type and user settings; this pipeline does not forward Garmin's original card text.
-- Missing samples are not interpolated into evidence of a physiological event.
-- Sensor readings are estimates and have varying sampling intervals and confidence.
-- Event counts depend on user-selected windows and thresholds.
-- Reports contain sensitive health data. Store them locally and share them only with informed consent.
-- This repository is for personal exploration, not diagnosis or treatment.
-
-## Acknowledgements
-
-The project uses the community-maintained `python-garminconnect` library and open-source plotting and data tools. It is not affiliated with Garmin.
-
-Clinical boundary reference: the [American Academy of Sleep Medicine diagnostic testing guideline](https://aasm.org/resources/clinicalguidelines/diagnostic-testing-osa.pdf) recommends polysomnography or technically adequate home sleep apnea testing for diagnosis; consumer wearable pattern matching is not a diagnostic substitute. The AASM's [respiratory scoring criteria](https://isr.aasm.org/helpv6/ScoringRespiratoryEventsR.html) include airflow-signal requirements that this project does not measure.
-
-Garmin references: [Insights in Garmin Connect](https://support.garmin.com/en-US/?faq=c3DcuWOsuW0BiEjv94eIm5), [customizing push notifications](https://support.garmin.com/en-IE/?faq=JIk40ZUqX26kyblDLHgbD8), and [Active Intelligence availability](https://support.garmin.com/en-MY/?faq=kWi5DoaMPZ4VCJBA0lFWP7).
+Not affiliated with Garmin. Optional AI summaries can be wrong and are not professional medical advice.

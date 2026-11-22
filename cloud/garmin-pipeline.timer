@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Garmin health report daily at 08:30 local time
+
+[Timer]
+OnCalendar=*-*-* 08:30:00
+Persistent=true
+RandomizedDelaySec=5m
+Unit=garmin-pipeline.service
+
+[Install]
+WantedBy=timers.target

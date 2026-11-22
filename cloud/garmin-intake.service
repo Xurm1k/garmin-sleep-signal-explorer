@@ -1,0 +1,24 @@
+[Unit]
+Description=Garmin Telegram health journal listener
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=garminbot
+Group=garminbot
+WorkingDirectory=/opt/garmin-sleep
+ExecStart=/opt/garmin-sleep/.venv/bin/python /opt/garmin-sleep/telegram_intake.py
+Restart=on-failure
+RestartSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/garmin-sleep
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

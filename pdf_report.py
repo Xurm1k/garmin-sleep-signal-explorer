@@ -1,4 +1,4 @@
-"""English Matplotlib PDF renderer used by pipeline.py."""
+"""Bilingual Matplotlib PDF renderer used by pipeline.py."""
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
@@ -14,8 +14,8 @@ COLORS = {
     "event": "#DB3155", "awake": "#F28C45", "deep": "#264C7E",
     "light": "#8EC5E8", "rem": "#A878C2",
 }
-STAGE_NAMES = {"awake": "Awake", "deep": "Deep",
-               "light": "Light", "rem": "REM"}
+STAGE_NAMES = {"awake": "Бодрствование / Awake", "deep": "Глубокий / Deep",
+               "light": "Лёгкий / Light", "rem": "Быстрый сон / REM"}
 
 def _timestamp(value):
     return pd.to_datetime(value, utc=True, errors="coerce")
@@ -33,11 +33,11 @@ def _summary_values(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
     r = respiration["respiration"] if not respiration.empty else pd.Series(dtype=float)
     h = heart_rate["heart_rate"] if not heart_rate.empty else pd.Series(dtype=float)
     return [
-        ("TOTAL SLEEP", f"{sleep['total_sleep_hours']:.2f} h", "sleep duration"),
-        ("SpO₂", f"{_fmt(s.min())} / {_fmt(s.mean())}", "min / mean, %"),
-        ("RESPIRATION", f"{_fmt(r.mean())} / {_fmt(r.min())}", "mean / min, breaths/min"),
-        ("HEART RATE", f"{_fmt(h.mean())} / {_fmt(h.max())}", "mean / max, bpm"),
-        ("SIGNAL MATCHES", str(len(events)), "SpO₂ ↓ · respiration ↓ · HR ↑"),
+        ("ЧИСТЫЙ СОН / TOTAL SLEEP", f"{sleep['total_sleep_hours']:.2f} ч / h", "длительность сна / sleep duration"),
+        ("SpO₂", f"{_fmt(s.min())} / {_fmt(s.mean())}", "мин. / ср. · min / mean, %"),
+        ("ДЫХАНИЕ / RESPIRATION", f"{_fmt(r.mean())} / {_fmt(r.min())}", "ср. / мин. · mean / min, breaths/min"),
+        ("ПУЛЬС / HEART RATE", f"{_fmt(h.mean())} / {_fmt(h.max())}", "ср. / макс. · mean / max, bpm"),
+        ("СОВПАДЕНИЯ / MATCHES", str(len(events)), "SpO₂ ↓ · respiration ↓ · HR ↑"),
     ]
 
 
@@ -68,9 +68,9 @@ def render_pdf(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
         spine.set_visible(False)
     header.text(0.025, 0.68, "SLEEP SIGNALS", color="#8EDBE1", fontsize=8,
                 fontweight="bold", transform=header.transAxes)
-    header.text(0.025, 0.18, f"Overnight profile · {target_date}", color="white",
+    header.text(0.025, 0.18, f"Ночной профиль / Night profile · {target_date}", color="white",
                 fontsize=18, fontweight="bold", transform=header.transAxes)
-    header.text(0.975, 0.30, "SpO₂ · respiration · heart rate", color="#D7E2F0",
+    header.text(0.975, 0.30, "SpO₂  ·  дыхание / respiration  ·  пульс / heart rate", color="#D7E2F0",
                 fontsize=9, ha="right", transform=header.transAxes)
     summary_ax = fig.add_subplot(outer[1])
     summary_ax.set_axis_off()
@@ -96,9 +96,9 @@ def render_pdf(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
     ax_spo2, ax_resp, ax_hr, ax_stage = axes
 
     metric_specs = [
-        (ax_spo2, spo2, "spo2", "SpO₂", "%", COLORS["spo2"]),
-        (ax_resp, respiration, "respiration", "Respiration", "breaths/min", COLORS["respiration"]),
-        (ax_hr, heart_rate, "heart_rate", "Heart rate", "bpm", COLORS["heart_rate"]),
+        (ax_spo2, spo2, "spo2", "SpO₂ / Сатурация", "%", COLORS["spo2"]),
+        (ax_resp, respiration, "respiration", "Дыхание / Respiration", "вдох/мин · breaths/min", COLORS["respiration"]),
+        (ax_hr, heart_rate, "heart_rate", "Пульс / Heart rate", "уд/мин · bpm", COLORS["heart_rate"]),
     ]
     for ax, frame, col, label, unit, color in metric_specs:
         ax.set_facecolor("white")
@@ -112,7 +112,7 @@ def render_pdf(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
         ax.set_ylabel(f"{label}\n{unit}", color=color, fontsize=8, fontweight="bold", rotation=0,
                       ha="right", va="center", labelpad=34)
         if frame.empty:
-            ax.text(0.5, 0.5, "No data", color=COLORS["muted"], ha="center", va="center",
+            ax.text(0.5, 0.5, "Нет данных / No data", color=COLORS["muted"], ha="center", va="center",
                     transform=ax.transAxes)
             continue
         x = _local_datetimes(frame["timestamp"], tz)
@@ -129,7 +129,7 @@ def render_pdf(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
     ax_stage.set_facecolor("white")
     ax_stage.set_ylim(0, 1)
     ax_stage.set_yticks([])
-    ax_stage.set_ylabel("SLEEP STAGES", color=COLORS["muted"], fontsize=8, fontweight="bold",
+    ax_stage.set_ylabel("ФАЗЫ / STAGES", color=COLORS["muted"], fontsize=8, fontweight="bold",
                         rotation=0, ha="right", va="center", labelpad=34)
     for side in ("top", "right", "left"):
         ax_stage.spines[side].set_visible(False)
@@ -181,7 +181,7 @@ def render_pdf(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
             ax.scatter([xmark], [event[value_key]], s=56, marker="o", facecolor=marker_color,
                        edgecolor="white", linewidth=1.2, zorder=6)
         event_handles.append(Patch(facecolor=COLORS["event"], alpha=0.25,
-                                   label=f"E{number} · wake {wake_local:%H:%M}"))
+                                   label=f"E{number} · пробуждение / wake {wake_local:%H:%M}"))
 
     phase_handles = [Patch(facecolor=COLORS[key], label=STAGE_NAMES[key])
                      for key in ("awake", "deep", "light", "rem")]
@@ -208,16 +208,16 @@ def render_pdf(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
             all_times.extend([start.tz_convert(tz).tz_localize(None), end.tz_convert(tz).tz_localize(None)])
     if all_times:
         axes[0].set_xlim(min(all_times), max(all_times))
-    ax_stage.set_xlabel(f"Time ({timezone_name})", color=COLORS["muted"], fontsize=8, labelpad=7)
+    ax_stage.set_xlabel(f"Время / Time ({timezone_name})", color=COLORS["muted"], fontsize=8, labelpad=7)
 
-    fig.text(0.04, 0.975, "GARMIN CONNECT  /  OVERNIGHT SIGNAL ANALYSIS", color=COLORS["muted"],
+    fig.text(0.04, 0.975, "GARMIN CONNECT  /  НОЧНОЙ АНАЛИЗ · OVERNIGHT ANALYSIS", color=COLORS["muted"],
              fontsize=7, fontweight="bold")
     fig.text(0.96, 0.975, "PDF · MATPLOTLIB", color=COLORS["muted"],
              fontsize=7, ha="right")
     fig.text(0.04, 0.035,
-             "Candidate match: local SpO₂ and respiration dips with a heart-rate rise near an awake stage. "
-             "Exploratory correlation only; "
-             "not a diagnosis or evidence of causation.",
+             "Совпадение / Match: локальный спад SpO₂ и дыхания / local SpO₂ and respiration dips + рост пульса / HR rise "
+             "около бодрствования / near wake. Исследовательская корреляция / Exploratory correlation; "
+             "не диагноз и не доказательство причинности / not a diagnosis or proof of causation.",
              color=COLORS["muted"], fontsize=7)
     fig.subplots_adjust(left=0.12, right=0.95, top=0.965, bottom=0.115)
 

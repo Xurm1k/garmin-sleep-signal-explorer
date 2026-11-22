@@ -20,6 +20,9 @@ from dotenv import load_dotenv
 from garminconnect import Garmin
 from plotly.subplots import make_subplots
 import pdf_report
+from health_store import generate_weekly_report, save_daily_snapshot
+from gemini_health_review import (GeminiReviewError, append_ai_review,
+                                 generate_weekly_ai_review)
 
 PROJECT_DIR = Path(__file__).resolve().parent
 REPORTS_DIR = PROJECT_DIR / "reports"
@@ -596,14 +599,15 @@ def build_dashboard(sleep: dict, spo2: pd.DataFrame, respiration: pd.DataFrame,
 
 def summary_text(target_date: str, sleep: dict, spo2: pd.DataFrame,
                  respiration: pd.DataFrame, heart_rate: pd.DataFrame,
-                 events: list[dict], daily_status: dict | None = None) -> str:
+                 events: list[dict], daily_status: dict | None = None,
+                 weekly_text: str | None = None) -> str:
     def mean_text(frame: pd.DataFrame, column: str) -> str:
         return "—" if frame.empty else f"{frame[column].mean():.1f}"
 
     total_minutes = int(sleep["sleep_time_seconds"] // 60)
     hours, minutes = divmod(total_minutes, 60)
     text = (f"🌙 Garmin — ночь / night {target_date}\n\n"
-            f"<b>✔️ Match (probably Apnoe): {len(events)}</b>\n"
+            f"<b>✔️ Signal matches near wake labels: {len(events)}</b>\n"
             f"Total sleep: {hours}h {minutes:02d}min\n"
             f"SpO₂, avg.: {mean_text(spo2, 'spo2')}%\n"
             f"Respiration avg.: {mean_text(respiration, 'respiration')} breaths/min\n"
@@ -632,6 +636,8 @@ def summary_text(target_date: str, sleep: dict, spo2: pd.DataFrame,
         if daily_status.get("low_recovery"):
             text += ("\n<b>Low recovery reserve:</b> consider rest or an easy session "
                      "today. This is a training-load prompt, not medical advice.")
+    if weekly_text:
+        text += "\n\n<b>Weekly health review</b>\n" + html.escape(weekly_text)
     return text
 
 
@@ -773,8 +779,9 @@ def main() -> int:
         night_start = int(os.getenv("NIGHT_START_HOUR", "18"))
         if not 0 <= night_start <= 23:
             raise PipelineError("NIGHT_START_HOUR must be from 0 to 23")
-        target = last_night(datetime.now(tz), night_start).isoformat()
-        current_date = datetime.now(tz).date().isoformat()
+        now_local = datetime.now(tz)
+        target = last_night(now_local, night_start).isoformat()
+        current_date = now_local.date().isoformat()
         LOGGER.info("Collecting overnight data for Garmin date %s (%s)", target, tz.key)
         garmin = init_garmin()
         raw_sleep, raw_spo2, raw_respiration = fetch_data(garmin, target)
@@ -807,8 +814,23 @@ def main() -> int:
         # Recovery metrics describe the current day, while sleep metrics are
         # keyed by the Garmin date of the overnight session.
         daily_status = fetch_daily_recovery(garmin, current_date, datetime.now(tz))
+        save_daily_snapshot(target, current_date, sleep, spo2, respiration,
+                            heart_rate, events, daily_status)
+        LOGGER.info("Saved local health snapshot for Garmin date %s", target)
+        weekly_text = None
+        if now_local.weekday() == 6:
+            _, weekly_path = generate_weekly_report(now_local.date(), tz.key)
+            LOGGER.info("Saved local weekly health review: %s", weekly_path)
+            try:
+                weekly_text = generate_weekly_ai_review(weekly_path)
+                append_ai_review(weekly_path, weekly_text)
+                LOGGER.info("Generated and saved Gemini weekly review")
+            except GeminiReviewError as exc:
+                weekly_text = "Недельное заключение временно недоступно; подробная сводка сохранена локально."
+                LOGGER.error("Gemini weekly analysis unavailable: %s", exc)
         send_telegram(pdf_path, summary_text(target, sleep, spo2, respiration,
-                                             heart_rate, events, daily_status))
+                                             heart_rate, events, daily_status,
+                                             weekly_text))
         return 0
     except Exception as exc:
         if not logging.getLogger().handlers:

@@ -1,0 +1,19 @@
+[Unit]
+Description=Garmin overnight sleep report and Telegram delivery
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=garminbot
+Group=garminbot
+WorkingDirectory=/opt/garmin-sleep
+ExecStart=/opt/garmin-sleep/.venv/bin/python /opt/garmin-sleep/pipeline.py
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/garmin-sleep
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+Environment=PYTHONUNBUFFERED=1

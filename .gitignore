@@ -1,11 +1,20 @@
-# Credentials and local configuration
+# Secrets and local configuration
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
 
-# Reports and personal Garmin data
+# Personal health data and generated output
+data/
 reports/
 cache/
+*.sqlite
+*.sqlite3
+*.db
 *.json
 *.csv
 *.html
@@ -13,8 +22,15 @@ cache/
 *.png
 *.jpg
 *.jpeg
+*.webp
 
-# Runtime artifacts
+# Archives and transfer bundles
+backups/
+*.zip
+*.tar
+*.tar.gz
+
+# Runtime and logs
 .venv/
 venv/
 __pycache__/
