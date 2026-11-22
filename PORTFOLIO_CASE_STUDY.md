@@ -1,10 +1,14 @@
 # Portfolio case study: Garmin Sleep Signal Explorer
 
-## The question
+## The problem
 
-Could a small data pipeline make overnight Garmin measurements easier to inspect around the watch's own awake-stage labels?
+Garmin provides sleep and recovery metrics, but I found the daily context easy to miss when it required checking several screens and reports. I wanted a repeatable way to surface a concise recovery summary, inspect overnight signals around the watch's awake-stage labels, and keep a local record for later review.
 
-I used AI-assisted coding to build the project. My contribution was defining the question and acceptance criteria, reviewing Garmin charts against generated reports, reporting parsing and visualization failures, deciding which data checks mattered, and keeping the claims within what the available data can support.
+The Telegram reminder uses selected recovery metrics and transparent project rules; it does not forward Garmin's proprietary recommendation text. The analysis remains exploratory and is not medical advice.
+
+## Portfolio context
+
+I approached this as an Operations Analytics problem: turn scattered measurements into a checked, reviewable workflow. The project demonstrates data validation, exception handling, recurring delivery, local record-keeping, and careful communication of uncertainty. AI-assisted coding accelerated implementation; I defined the use case and acceptance criteria, compared reports with Garmin charts, reported parsing and visualization failures, and kept the claims within what the data can support.
 
 ## The workflow
 
